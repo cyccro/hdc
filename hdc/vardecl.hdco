@@ -1,0 +1,33 @@
+[
+    Token {
+        line: 1,
+        column: 3,
+        kind: Let,
+    },
+    Token {
+        line: 1,
+        column: 5,
+        kind: Identifier(
+            "a",
+        ),
+    },
+    Token {
+        line: 1,
+        column: 6,
+        kind: Operator(
+            Eq,
+        ),
+    },
+    Token {
+        line: 1,
+        column: 8,
+        kind: IntLit(
+            "5",
+        ),
+    },
+    Token {
+        line: 1,
+        column: 9,
+        kind: SemiColon,
+    },
+]

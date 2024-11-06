@@ -1,4 +1,8 @@
-use std::{io::Read, path::Path};
+use parser::tokenizer::Tokenizer;
+use std::{
+    io::{Read, Write},
+    path::Path,
+};
 
 fn get_file_content(path: &Path) -> Result<String, String> {
     if let Ok(mut f) = std::fs::File::open(path) {
@@ -30,8 +34,30 @@ fn main() {
         "hdc_help" => print_help(),
         _ => {
             match get_file_content(&std::path::PathBuf::from(&env[1])) {
-                Ok(f) => println!("{f}"),
-                Err(e) => println!("{e}"),
+                Ok(fcontent) => {
+                    let output = if let Some(o) = env.get(2) {
+                        if o == "-o" {
+                            env.get(3).expect("Expected a file output").clone()
+                        } else {
+                            format!("./{}.hdco", &env[1][..env[1].len() - 4])
+                        }
+                    } else {
+                        format!("./{}.hdco", &env[1][..env[1].len() - 4])
+                    };
+                    let mut file = match std::fs::File::create(&output) {
+                        Ok(f) => f,
+                        Err(e) => {
+                            return println!("Error while trying to create {output} file: {e:?}")
+                        }
+                    };
+                    let tokenizer = Tokenizer::new(fcontent);
+                    let tokens = match tokenizer.gen() {
+                        Ok(tks) => tks,
+                        Err(e) => return println!("{e:?}"),
+                    };
+                    file.write(format!("{tokens:#?}").as_bytes()).unwrap()
+                }
+                Err(e) => return println!("{e}"),
             };
         }
     }
