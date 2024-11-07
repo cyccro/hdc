@@ -1,4 +1,4 @@
-use parser::tokenizer::Tokenizer;
+use parser::{parsing::Parser, tokenizer::Tokenizer};
 use std::{
     io::{Read, Write},
     path::Path,
@@ -51,11 +51,13 @@ fn main() {
                         }
                     };
                     let tokenizer = Tokenizer::new(fcontent);
-                    let tokens = match tokenizer.gen() {
+                    let mut tokens = match tokenizer.gen() {
                         Ok(tks) => tks,
                         Err(e) => return println!("{e:?}"),
                     };
-                    file.write(format!("{tokens:#?}").as_bytes()).unwrap()
+                    let mut parser = Parser::new();
+                    let expression = parser.parse_tokens(&mut tokens).unwrap();
+                    file.write(format!("{expression:#?}").as_bytes()).unwrap()
                 }
                 Err(e) => return println!("{e}"),
             };

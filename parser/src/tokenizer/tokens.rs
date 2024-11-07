@@ -18,7 +18,7 @@ pub enum TokenKind {
 pub struct Token {
     line: usize,
     column: usize,
-    kind: TokenKind,
+    pub kind: TokenKind,
 }
 impl Token {
     pub fn identifier(buf: String, cursor: &Cursor) -> Self {
@@ -39,5 +39,14 @@ impl Token {
             line: cursor.line(),
             column: cursor.column(),
         }
+    }
+    pub fn refkind(&self) -> &TokenKind {
+        &self.kind
+    }
+    pub fn line(&self) -> usize {
+        self.line
+    }
+    pub fn column(&self) -> usize {
+        self.column
     }
 }

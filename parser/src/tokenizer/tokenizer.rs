@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use super::{Cursor, Operator, Token, TokenKind};
 
 #[derive(Debug)]
@@ -58,12 +60,12 @@ impl Tokenizer {
     pub fn new(content: String) -> Self {
         Self { content }
     }
-    pub fn gen(&self) -> Result<Vec<Token>, TokenizationError> {
-        let mut vec = Vec::new();
+    pub fn gen(&self) -> Result<VecDeque<Token>, TokenizationError> {
+        let mut vec = VecDeque::new();
         let chars: Vec<char> = self.content.chars().collect();
         let mut cursor = Cursor::new();
         while let Some(chr) = chars.get(cursor.index()) {
-            vec.push(match chr {
+            vec.push_back(match chr {
                 ';' => Token::new(TokenKind::SemiColon, &cursor),
                 '=' => Token::new(TokenKind::Operator(Operator::Eq), &cursor),
                 '\n' => {
