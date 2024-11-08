@@ -1,8 +1,0 @@
-; ModuleID = 'hdc'
-source_filename = "hdc"
-
-define void @main() {
-entry:
-  %a = alloca float, align 4
-  store float 6.000000e+02, float* %a, align 4
-}
