@@ -1,3 +1,4 @@
-func main():void {
-	let a = 5;
+func something():int32 {
+	50 * 4 + 3
 }
+func main(p:int32): int32 = something;

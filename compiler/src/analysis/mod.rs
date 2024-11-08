@@ -35,19 +35,22 @@ impl SemanticAnalayzer {
             _ => return Err(SemanticError::UnrecognizedType(s.to_string())),
         })
     }
+    pub fn delete_var(&mut self, varname: &String) -> Option<SemanticType> {
+        self.variables.remove(varname)
+    }
     pub fn create_var(
         &mut self,
         varname: &String,
         expr: &Expression,
-    ) -> Result<SemanticType, SemanticError> {
+    ) -> Result<(SemanticType, Option<SemanticType>), SemanticError> {
         let stype = self.analyze_expr(expr)?;
-        let _ = self.variables.insert(varname.clone(), stype.clone());
-        Ok(stype)
+        let old_type = self.variables.insert(varname.clone(), stype.clone());
+        Ok((stype, old_type))
     }
     pub fn analyze_var(&self, varname: &String) -> Result<&SemanticType, SemanticError> {
         self.variables
             .get(varname)
-            .ok_or(SemanticError::UndeclaredVariable)
+            .ok_or(SemanticError::UndeclaredVariable(varname.clone()))
     }
     pub fn analyze_binexpr(
         &mut self,
@@ -69,7 +72,7 @@ impl SemanticAnalayzer {
         Ok(match expr {
             Expression::IntLit(_) => SemanticType::Int32,
             Expression::FloatLit(_) => SemanticType::Float32,
-            Expression::LetDecl { varname, expr, .. } => self.create_var(varname, &**expr)?,
+            Expression::LetDecl { varname, expr, .. } => self.create_var(varname, &**expr)?.0,
             Expression::Identifier(s) => self.analyze_var(s)?.clone(),
             Expression::Program(_) => return Err(SemanticError::ProgramAnalysis),
             Expression::BinExpr { lhs, rhs, .. } => self.analyze_binexpr(&**lhs, &**rhs)?,
@@ -104,7 +107,9 @@ impl SemanticAnalayzer {
                         params,
                         rtype: Box::new(rtype),
                     };
-                    self.variables.insert(identifier.to_string(), ftype.clone());
+                    if let Some(_) = self.variables.insert(identifier.to_string(), ftype.clone()) {
+                        return Err(SemanticError::FunctionRedeclare(identifier.clone()));
+                    };
                     ftype
                 } else {
                     return Err(SemanticError::InvalidFnType {

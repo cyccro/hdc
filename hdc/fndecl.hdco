@@ -1,0 +1,7 @@
+; ModuleID = 'hdc'
+source_filename = "hdc"
+
+define i32 @main(i32 %0) {
+entry:
+  ret i32 40
+}

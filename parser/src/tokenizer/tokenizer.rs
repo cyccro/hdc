@@ -68,6 +68,7 @@ impl Tokenizer {
         while let Some(chr) = chars.get(cursor.index()) {
             vec.push_back(match chr {
                 ';' => Token::new(TokenKind::SemiColon, &cursor),
+                ':' => Token::new(TokenKind::Colon, &cursor),
                 '=' => Token::new(TokenKind::Operator(Operator::Eq), &cursor),
                 '+' => Token::new(TokenKind::Operator(Operator::Plus), &cursor),
                 '-' => Token::new(TokenKind::Operator(Operator::Minus), &cursor),
@@ -112,6 +113,7 @@ impl Tokenizer {
                 break;
             }
         }
+        cursor.backward();
         Ok(Self::check_for_reserved(buf, cursor))
     }
     pub fn get_digit_lit(

@@ -1,8 +1,11 @@
-let a = {
-
-	120.0;
-	5.0;
-	let b = 5;
-	let c = 560;
-	c * b
-};
+func main():int32 {
+	let a = {
+		120.0;
+		5.0;
+		let b = 5;
+		let c = 560;
+		c * b
+	};
+	let q = c + b + a;
+	q
+}

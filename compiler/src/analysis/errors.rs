@@ -2,8 +2,9 @@ use super::SemanticType;
 
 #[derive(Debug, Clone)]
 pub enum SemanticError {
-    UndeclaredVariable,
+    UndeclaredVariable(String),
     UnrecognizedType(String),
+    FunctionRedeclare(String),
     ProgramAnalysis,
     InvalidBinExpr {
         lhs_type: SemanticType,

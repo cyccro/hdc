@@ -20,6 +20,7 @@ pub enum TokenKind {
     OpenBrace,
     CloseBrace,
     SemiColon,
+    Colon,
     Operator(Operator),
     Eof,
 }

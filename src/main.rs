@@ -1,4 +1,3 @@
-use parser::{parsing::Parser, tokenizer::Tokenizer};
 use std::{
     io::{Read, Write},
     path::Path,
@@ -43,10 +42,10 @@ fn main() {
         "hdc_help" => print_help(),
         _ => {
             match compiler::compile_from_to(Path::new(&env[1]), Path::new(&output)) {
-                Err(e) => println!("{e:#?}"),
+                Err(e) => println!("{e:?}"),
                 Ok(r) => match r {
                     Ok(bytes) => println!("Bytes written:\n{bytes:?}"),
-                    Err(e) => println!("Compilation Error: {e:#?}"),
+                    Err(e) => println!("Compilation Error: {e}"),
                 },
             };
         }

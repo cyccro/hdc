@@ -1,7 +1,7 @@
 ; ModuleID = 'hdc'
 source_filename = "hdc"
 
-define void @main() {
+define i32 @main() {
 entry:
   %a = alloca i32, align 4
   %b = alloca i32, align 4
@@ -12,4 +12,13 @@ entry:
   %load-b = load i32, i32* %b, align 4
   %multiplication = mul i32 %load-c, %load-b
   store i32 %multiplication, i32* %a, align 4
+  %q = alloca i32, align 4
+  %load-c1 = load i32, i32* %c, align 4
+  %load-b2 = load i32, i32* %b, align 4
+  %addition = add i32 %load-c1, %load-b2
+  %load-a = load i32, i32* %a, align 4
+  %addition3 = add i32 %addition, %load-a
+  store i32 %addition3, i32* %q, align 4
+  %load-q = load i32, i32* %q, align 4
+  ret i32 %load-q
 }

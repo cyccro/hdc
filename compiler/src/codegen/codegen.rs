@@ -6,14 +6,12 @@ use inkwell::{
     builder::Builder,
     context::Context,
     module::Module,
-    types::{
-        AnyType, BasicMetadataTypeEnum, BasicType, BasicTypeEnum, FloatType, IntType, VoidType,
-    },
-    values::{BasicValue, BasicValueEnum, PointerValue},
+    types::{BasicType, BasicTypeEnum, FloatType, FunctionType, IntType, VoidType},
+    values::{BasicValue, BasicValueEnum, FunctionValue, PointerValue},
     AddressSpace,
 };
 use parser::{
-    parsing::{Expression, LetDeclKind},
+    parsing::{Expression, LetDeclKind, Param},
     tokenizer::Operator,
 };
 
@@ -26,6 +24,11 @@ pub struct CodeGenerator<'a> {
     variables: HashMap<String, PointerValue<'a>>,
 }
 
+pub enum CodeGenType<'a> {
+    Primitive(BasicTypeEnum<'a>),
+    Fn(FunctionType<'a>),
+}
+
 impl<'a> CodeGenerator<'a> {
     pub fn create_ctx() -> Context {
         Context::create()
@@ -33,10 +36,6 @@ impl<'a> CodeGenerator<'a> {
     pub fn new(context: &'a Context) -> Self {
         let builder = context.create_builder();
         let module = context.create_module("hdc");
-        let f = module.add_function("main", context.void_type().fn_type(&[], false), None);
-        let entry = context.append_basic_block(f, "entry");
-        builder.position_at_end(entry);
-
         Self {
             context,
             builder,
@@ -53,9 +52,10 @@ impl<'a> CodeGenerator<'a> {
         let mut tokens = parser::tokenizer::Tokenizer::new(source)
             .gen()
             .map_err(|e| CompilationError::Tokenization(e))?;
-        let ast = parser::parsing::Parser::new()
+        let mut parser = parser::parsing::Parser::new();
+        let ast = parser
             .parse_tokens(&mut tokens)
-            .map_err(|e| CompilationError::Parsing(e))?;
+            .map_err(|e| CompilationError::Parsing(e, parser.backtrace))?;
         self.compile_ast(ast)?;
         if let Some(path) = output {
             self.module.print_to_file(path).unwrap();
@@ -81,41 +81,51 @@ impl<'a> CodeGenerator<'a> {
             .build_load(*varptr, &format!("load-{vname}"))
             .unwrap())
     }
-    fn type_from_stype(&self, stype: &SemanticType) -> Option<BasicTypeEnum<'a>> {
+    fn type_from_stype(&self, stype: &SemanticType) -> Option<CodeGenType<'a>> {
         Some(match stype {
-            SemanticType::Int32 => self.i32().as_basic_type_enum(),
-            SemanticType::Float32 => self.f32().as_basic_type_enum(),
+            SemanticType::Int32 => CodeGenType::Primitive(self.i32().as_basic_type_enum()),
+            SemanticType::Float32 => CodeGenType::Primitive(self.f32().as_basic_type_enum()),
             SemanticType::Void => return None,
             SemanticType::FnType { params, rtype } => {
                 let params = {
                     let mut param_types = Vec::with_capacity(params.len());
                     for param in params {
                         if let Some(ptype) = self.type_from_stype(param) {
-                            param_types.push(ptype.into())
+                            param_types.push(match ptype {
+                                CodeGenType::Primitive(basic) => basic.into(),
+                                CodeGenType::Fn(f) => f
+                                    .ptr_type(AddressSpace::default())
+                                    .as_basic_type_enum()
+                                    .into(),
+                            })
                         } else {
                             continue;
                         }
                     }
                     param_types
                 };
-                if let Some(rtype) = self.type_from_stype(&**rtype) {
-                    rtype.fn_type(&params, false)
+                CodeGenType::Fn(if let Some(rtype) = self.type_from_stype(&**rtype) {
+                    match rtype {
+                        CodeGenType::Fn(f) => f
+                            .ptr_type(AddressSpace::default())
+                            .as_basic_type_enum()
+                            .fn_type(&params, false),
+                        CodeGenType::Primitive(f) => f.fn_type(&params, false),
+                    }
                 } else {
                     self.void().fn_type(&params, false)
-                }
-                .ptr_type(AddressSpace::default())
-                .as_basic_type_enum()
+                })
             }
         })
     }
     fn type_based_on_semantics(
         &mut self,
         expr: &Expression,
-    ) -> Result<Option<BasicTypeEnum<'a>>, CompilationError> {
+    ) -> Result<Option<CodeGenType<'a>>, CompilationError> {
         let stype = self
             .analyzer
             .analyze_expr(expr)
-            .map_err(|e| CompilationError::TypeError(e))?;
+            .map_err(CompilationError::TypeError)?;
         Ok(self.type_from_stype(&stype))
     }
     fn compile_ast(
@@ -163,12 +173,66 @@ impl<'a> CodeGenerator<'a> {
             Expression::Negative(expr) => self.compile_negative(*expr)?,
             Expression::Block(exprs) => self.compile_block(exprs)?,
             Expression::FuncDecl {
-                identifier,
-                params,
-                rtype,
-                block,
-            } => todo!(),
+                ref identifier,
+                ref block,
+                ..
+            } => {
+                let stype = self
+                    .analyzer
+                    .analyze_expr(&expr)
+                    .map_err(CompilationError::TypeError)?;
+                Some(
+                    self.compile_func_decl(identifier.clone(), block.clone(), stype)?
+                        .as_global_value()
+                        .as_basic_value_enum(),
+                )
+            }
         })
+    }
+    fn compile_func_decl(
+        &mut self,
+        identifier: String,
+        block: Box<Expression>,
+        stype: SemanticType,
+    ) -> Result<FunctionValue<'a>, CompilationError> {
+        let ftype = {
+            self.analyzer
+                .create_var(&identifier, &*block)
+                .map_err(CompilationError::TypeError)?;
+
+            let CodeGenType::Fn(func) = self.type_from_stype(&stype).unwrap() else {
+                //i know that it will be a function type
+                unreachable!();
+            };
+            func
+        };
+        let f = self.module.add_function(&identifier, ftype, None);
+        let entry = self.context.append_basic_block(f, "entry");
+        self.builder.position_at_end(entry);
+
+        if self.variables.contains_key(&identifier) {
+            return Err(CompilationError::InvalidRedeclare(identifier));
+        } else {
+            self.variables
+                .insert(identifier, f.as_global_value().as_pointer_value());
+        };
+        match *block {
+            Expression::Block(mut exprs) => {
+                let last = exprs.pop().unwrap();
+                for expr in exprs {
+                    self.compile_ast(expr)?;
+                }
+                if let Some(expr) = self.compile_ast(last)? {
+                    self.builder.build_return(Some(&expr)).unwrap();
+                }
+            }
+            expr => {
+                if let Some(expr) = self.compile_ast(expr)? {
+                    self.builder.build_return(Some(&expr)).unwrap();
+                }
+            }
+        };
+        Ok(f)
     }
     fn compile_block(
         &mut self,
@@ -221,15 +285,26 @@ impl<'a> CodeGenerator<'a> {
             .builder
             .build_alloca(
                 if let Some(stype) = stype {
-                    stype
+                    match stype {
+                        CodeGenType::Fn(f) => {
+                            f.ptr_type(AddressSpace::default()).as_basic_type_enum()
+                        }
+                        CodeGenType::Primitive(basic) => basic,
+                    }
                 } else {
                     return Err(CompilationError::TryingAssignVoid);
                 },
                 varname,
             )
             .unwrap();
-        if let Some(expr) = self.compile_ast(expr)? {
-            self.builder.build_store(alloc, expr).unwrap();
+        let variable = varname.to_owned();
+        self.analyzer
+            .create_var(&variable, &expr)
+            .map_err(CompilationError::TypeError)?;
+        if let Some(expression) = self.compile_ast(expr)? {
+            self.builder.build_store(alloc, expression).unwrap();
+        } else {
+            self.analyzer.delete_var(&variable);
         }
         self.variables.insert(varname.to_string(), alloc);
         Ok(alloc)
