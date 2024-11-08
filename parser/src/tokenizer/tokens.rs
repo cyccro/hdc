@@ -11,9 +11,14 @@ pub enum Operator {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TokenKind {
     Let,
+    Func,
     Identifier(String),
     IntLit(String),
     FloatLit(String),
+    OpenParen,
+    CloseParen,
+    OpenBrace,
+    CloseBrace,
     SemiColon,
     Operator(Operator),
     Eof,
@@ -25,6 +30,9 @@ pub struct Token {
     pub kind: TokenKind,
 }
 impl Token {
+    pub fn func(cursor: &Cursor) -> Self {
+        Self::new(TokenKind::Func, cursor)
+    }
     pub fn identifier(buf: String, cursor: &Cursor) -> Self {
         Self::new(TokenKind::Identifier(buf), cursor)
     }

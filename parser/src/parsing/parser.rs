@@ -90,6 +90,23 @@ impl Parser {
     fn parse_secondary(&mut self, tk: Token) -> Result<Expression, ParsingError> {
         self.parse_additive(tk)
     }
+    fn parse_block(&mut self) -> Result<Expression, ParsingError> {
+        let mut exprs = Vec::new();
+        loop {
+            if let Some(TokenKind::CloseBrace) = self.peek().map(|t| &t.kind) {
+                break;
+            } else {
+                exprs.push(self.parse()?);
+                if let Some(TokenKind::CloseBrace) = self.peek().map(|t| &t.kind) {
+                    break;
+                } else {
+                    self.expect(TokenKind::SemiColon)?;
+                }
+            }
+        }
+        self.eat()?;
+        Ok(Expression::Block(exprs))
+    }
     fn parse_additive(&mut self, tk: Token) -> Result<Expression, ParsingError> {
         let mut left = self.parse_multiplicative(tk)?;
         loop {
@@ -155,6 +172,12 @@ impl Parser {
             TokenKind::Operator(Operator::Minus) => {
                 Ok(Expression::Negative(Box::new(self.parse()?)))
             }
+            TokenKind::OpenParen => {
+                let r = Ok(self.parse()?);
+                self.expect(TokenKind::CloseParen)?;
+                r
+            }
+            TokenKind::OpenBrace => Ok(self.parse_block()?),
             _ => Err(ParsingError::UnexpectedToken(token)),
         }
     }

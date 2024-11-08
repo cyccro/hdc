@@ -22,4 +22,5 @@ pub enum CompilationError {
     LitParseError(LitParseError),
     UndeclaredVariable(String),
     InvalidNegation(Expression),
+    TryingAssignVoid,
 }

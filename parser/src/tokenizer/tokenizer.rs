@@ -54,6 +54,7 @@ impl Tokenizer {
     pub fn check_for_reserved(buf: String, cursor: &Cursor) -> Token {
         match &*buf {
             "let" => Token::let_token(cursor),
+            "func" => Token::func(cursor),
             _ => return Token::identifier(buf, cursor),
         }
     }
@@ -72,6 +73,10 @@ impl Tokenizer {
                 '-' => Token::new(TokenKind::Operator(Operator::Minus), &cursor),
                 '*' => Token::new(TokenKind::Operator(Operator::Star), &cursor),
                 '/' => Token::new(TokenKind::Operator(Operator::Bar), &cursor),
+                '(' => Token::new(TokenKind::OpenParen, &cursor),
+                ')' => Token::new(TokenKind::CloseParen, &cursor),
+                '{' => Token::new(TokenKind::OpenBrace, &cursor),
+                '}' => Token::new(TokenKind::CloseBrace, &cursor),
                 '\n' => {
                     cursor.advance_line();
                     continue;
