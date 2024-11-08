@@ -3,6 +3,6 @@ source_filename = "hdc"
 
 define void @main() {
 entry:
-  %a = alloca i32, align 4
-  store i32 5, i32* %a, align 4
+  %a = alloca float, align 4
+  store float 6.000000e+02, float* %a, align 4
 }

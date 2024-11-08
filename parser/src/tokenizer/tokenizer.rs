@@ -68,6 +68,10 @@ impl Tokenizer {
             vec.push_back(match chr {
                 ';' => Token::new(TokenKind::SemiColon, &cursor),
                 '=' => Token::new(TokenKind::Operator(Operator::Eq), &cursor),
+                '+' => Token::new(TokenKind::Operator(Operator::Plus), &cursor),
+                '-' => Token::new(TokenKind::Operator(Operator::Minus), &cursor),
+                '*' => Token::new(TokenKind::Operator(Operator::Star), &cursor),
+                '/' => Token::new(TokenKind::Operator(Operator::Bar), &cursor),
                 '\n' => {
                     cursor.advance_line();
                     continue;
@@ -77,9 +81,9 @@ impl Tokenizer {
                         cursor.advance();
                         continue;
                     } else if chr.is_ascii_digit() {
-                        self.get_digit_lit(&mut cursor, &chars)?
+                        Self::get_digit_lit(&mut cursor, &chars)?
                     } else if chr.is_alphabetic() {
-                        self.get_identifier(&mut cursor, &chars)?
+                        Self::get_identifier(&mut cursor, &chars)?
                     } else {
                         return Err(TokenizationError::unexpected_char(*chr, &cursor));
                     }
@@ -90,7 +94,6 @@ impl Tokenizer {
         Ok(vec)
     }
     pub fn get_identifier(
-        &self,
         cursor: &mut Cursor,
         chars: &Vec<char>,
     ) -> Result<Token, TokenizationError> {
@@ -107,7 +110,6 @@ impl Tokenizer {
         Ok(Self::check_for_reserved(buf, cursor))
     }
     pub fn get_digit_lit(
-        &self,
         cursor: &mut Cursor,
         chars: &Vec<char>,
     ) -> Result<Token, TokenizationError> {
@@ -117,7 +119,7 @@ impl Tokenizer {
         loop {
             let chr = Self::get_char(cursor, chars, true)?;
             if chr.is_ascii_digit() || *chr == '.' {
-                if hasdot && rnormal {
+                if hasdot && rnormal && *chr == '.' {
                     rnormal = false;
                 }
                 if *chr == '.' {

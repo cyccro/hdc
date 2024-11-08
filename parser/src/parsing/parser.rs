@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, mem};
+use std::{collections::VecDeque, mem, thread::current};
 
 use crate::tokenizer::{Operator, Token, TokenKind};
 
@@ -82,10 +82,58 @@ impl Parser {
         match tk.kind {
             TokenKind::Let => self.parse_let_expr(),
             TokenKind::IntLit(_) | TokenKind::FloatLit(_) | TokenKind::Identifier(_) => {
-                self.parse_primary(tk)
+                self.parse_secondary(tk)
             }
             _ => Err(ParsingError::UnexpectedToken(tk)),
         }
+    }
+    fn parse_secondary(&mut self, tk: Token) -> Result<Expression, ParsingError> {
+        self.parse_additive(tk)
+    }
+    fn parse_additive(&mut self, tk: Token) -> Result<Expression, ParsingError> {
+        let mut left = self.parse_multiplicative(tk)?;
+        loop {
+            let Some(current) = self.peek() else {
+                break;
+            };
+            if let TokenKind::Operator(operator @ (Operator::Plus | Operator::Minus)) = current.kind
+            {
+                self.eat()?;
+                left = Expression::BinExpr {
+                    lhs: Box::new(left),
+                    rhs: Box::new({
+                        let tk = self.eat()?;
+                        self.parse_multiplicative(tk)?
+                    }),
+                    op: operator,
+                }
+            } else {
+                break;
+            }
+        }
+        Ok(left)
+    }
+    fn parse_multiplicative(&mut self, tk: Token) -> Result<Expression, ParsingError> {
+        let mut left = self.parse_primary(tk)?;
+        loop {
+            let Some(current) = self.peek() else {
+                break;
+            };
+            if let TokenKind::Operator(operator @ (Operator::Star | Operator::Bar)) = current.kind {
+                self.eat()?;
+                left = Expression::BinExpr {
+                    lhs: Box::new(left),
+                    rhs: Box::new({
+                        let tk = self.eat()?;
+                        self.parse_primary(tk)?
+                    }),
+                    op: operator,
+                }
+            } else {
+                break;
+            }
+        }
+        Ok(left)
     }
     fn parse_let_expr(&mut self) -> Result<Expression, ParsingError> {
         let varname = self.expect(TokenKind::Identifier(format!("")))?;
@@ -96,12 +144,8 @@ impl Parser {
         Ok(Expression::LetDecl {
             kind: LetDeclKind::Normal,
             varname: identifier,
-            expr: Box::new(self.parse_expr()?),
+            expr: Box::new(self.parse()?),
         })
-    }
-    fn parse_expr(&mut self) -> Result<Expression, ParsingError> {
-        let tk = self.eat()?;
-        self.parse_primary(tk)
     }
     fn parse_primary(&self, token: Token) -> Result<Expression, ParsingError> {
         match token.kind {

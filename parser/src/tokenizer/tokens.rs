@@ -3,6 +3,10 @@ use super::Cursor;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Operator {
     Eq,
+    Plus,
+    Minus,
+    Star,
+    Bar,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TokenKind {
