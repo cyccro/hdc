@@ -7,7 +7,7 @@ pub struct Parser {
     tokens: std::collections::VecDeque<Token>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ParsingError {
     InQueueParsing,
     EndedTokens,

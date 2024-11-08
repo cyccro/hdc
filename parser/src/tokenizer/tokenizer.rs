@@ -2,14 +2,14 @@ use std::collections::VecDeque;
 
 use super::{Cursor, Operator, Token, TokenKind};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TokenizationErrorKind {
     FoundUnexpectedEof,
     UnexpectedChar(char),
     InvalidDigit(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TokenizationError {
     line: usize,
     column: usize,

@@ -44,20 +44,13 @@ fn main() {
                     } else {
                         format!("./{}.hdco", &env[1][..env[1].len() - 4])
                     };
-                    let mut file = match std::fs::File::create(&output) {
-                        Ok(f) => f,
-                        Err(e) => {
-                            return println!("Error while trying to create {output} file: {e:?}")
-                        }
-                    };
-                    let tokenizer = Tokenizer::new(fcontent);
-                    let mut tokens = match tokenizer.gen() {
-                        Ok(tks) => tks,
-                        Err(e) => return println!("{e:?}"),
-                    };
-                    let mut parser = Parser::new();
-                    let expression = parser.parse_tokens(&mut tokens).unwrap();
-                    file.write(format!("{expression:#?}").as_bytes()).unwrap()
+                    match compiler::compile_from_to(Path::new(&env[1]), Path::new(&output)) {
+                        Err(e) => println!("{e:#?}"),
+                        Ok(r) => match r {
+                            Ok(bytes) => println!("Bytes written:\n{bytes:?}"),
+                            Err(e) => println!("Compilation Error: {e:#?}"),
+                        },
+                    }
                 }
                 Err(e) => return println!("{e}"),
             };
